@@ -110,6 +110,12 @@ _EOF_
 mkdir -p rootfs/etc/systemd/system/multi-user.target.wants
 ln -sf ../dietpi-build.service rootfs/etc/systemd/system/multi-user.target.wants/dietpi-build.service
 
+# ophub ships unpackaged firmware with dangling symlinks (e.g. ath11k/WCN6855/hw2.1),
+# which make dpkg fail when Debian firmware-* packages are unpacked over them.
+# Resolved inside the image (chroot) so absolute symlink targets are checked against the image, not the host.
+ls -la rootfs/usr/lib/firmware/ath11k/WCN6855 2> /dev/null || true
+chroot rootfs find /usr/lib/firmware -xtype l -print -delete | sed 's/^/removed dangling symlink: /'
+
 # Armbian links /etc/resolv.conf to systemd-resolved, which DietPi-Installer purges -> DNS dies mid-install.
 # Use a static resolv.conf instead (DHCP client rewrites it on the device).
 rm -f rootfs/etc/resolv.conf
