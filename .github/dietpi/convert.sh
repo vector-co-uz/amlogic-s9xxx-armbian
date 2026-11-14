@@ -115,6 +115,8 @@ ln -sf ../dietpi-build.service rootfs/etc/systemd/system/multi-user.target.wants
 # Resolved inside the image (chroot) so absolute symlink targets are checked against the image, not the host.
 ls -la rootfs/usr/lib/firmware/ath11k/WCN6855 2> /dev/null || true
 chroot rootfs find /usr/lib/firmware -xtype l -print -delete | sed 's/^/removed dangling symlink: /'
+# Unpackaged symlinks to directories (e.g. ath11k/WCN6855/hw2.1 -> hw2.0) clash with real directories in Debian firmware-* packages.
+chroot rootfs bash -c 'find /usr/lib/firmware -type l -xtype d | while read -r l; do dpkg -S "$l" &> /dev/null || { echo "removed dir symlink: $l -> $(readlink "$l")"; rm "$l"; }; done'
 
 # Armbian links /etc/resolv.conf to systemd-resolved, which DietPi-Installer purges -> DNS dies mid-install.
 # Use a static resolv.conf instead (DHCP client rewrites it on the device).
