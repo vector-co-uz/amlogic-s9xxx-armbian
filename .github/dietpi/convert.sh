@@ -73,7 +73,7 @@ if [[ $NO_HS200 == true ]]; then
 			/\{[[:space:]]*$/ {
 				n=$1; if (n ~ /:$/) n=$2
 				if (n == "/") { d=0; p[0]="" } else { d++; p[d]=p[d-1] "/" n }
-				if (n ~ /^mmc@(d0)?074000$/) print p[d]
+				if (n ~ /^mmc@(d00)?74000$/) print p[d]
 				next
 			}
 			/^[[:space:]]*\};/ { d-- }' | head -1)
@@ -110,9 +110,14 @@ _EOF_
 mkdir -p rootfs/etc/systemd/system/multi-user.target.wants
 ln -sf ../dietpi-build.service rootfs/etc/systemd/system/multi-user.target.wants/dietpi-build.service
 
+# Armbian links /etc/resolv.conf to systemd-resolved, which DietPi-Installer purges -> DNS dies mid-install.
+# Use a static resolv.conf instead (DHCP client rewrites it on the device).
+rm -f rootfs/etc/resolv.conf
+printf 'nameserver 1.1.1.1\nnameserver 8.8.8.8\n' > rootfs/etc/resolv.conf
+
 abind=("--bind=$LOOP" '--bind=/dev/disk')
 for p in "${LOOP}"p*; do abind+=("--bind=$p"); done
-systemd-nspawn -bD rootfs "${abind[@]}" < /dev/null || true
+systemd-nspawn -bD rootfs --resolv-conf=off "${abind[@]}" < /dev/null || true
 [[ -f rootfs/success ]] || { echo "Error: DietPi-Installer did not finish successfully"; exit 1; }
 rm rootfs/success
 echo "::endgroup::"
